@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BetPulse</title>
+
+<style>
+body {background:#0f172a;color:white;font-family:Arial;text-align:center;}
+.card {background:#1e293b;margin:10px;padding:15px;border-radius:12px;}
+.top {border:2px solid gold;}
+button {background:#22c55e;border:none;padding:10px;color:white;border-radius:5px;}
+.hot {color:#22c55e;}
+.mid {color:orange;}
+.low {color:red;}
+</style>
+</head>
+
+<body>
+
+<h1>🔥 BetPulse</h1>
+<p>Jogos pagando agora</p>
+
+<div id="games">Carregando...</div>
+
+<script>
+const URL = "COLE_AQUI";
+const KEY = "COLE_AQUI";
+
+function status(rtp){
+ if(rtp>=90) return ["🔥 Pagando muito","hot"];
+ if(rtp>=80) return ["🟡 Normal","mid"];
+ return ["🔴 Fraco","low"];
+}
+
+async function load(){
+ let res = await fetch(URL+"/rest/v1/games",{
+  headers:{
+   apikey:KEY,
+   Authorization:"Bearer "+KEY
+  }
+ });
+
+ let data = await res.json();
+
+ data.forEach(g=>{
+  g.rtp = (g.totalwin/g.totalbet)*100;
+ });
+
+ data.sort((a,b)=>b.rtp-a.rtp);
+
+ let html="";
+ data.forEach((g,i)=>{
+  let s=status(g.rtp);
+
+  html+=`
+  <div class="card ${i==0?'top':''}">
+    <h2>${i==0?'🥇 ':''}${g.name}</h2>
+    <p>RTP: ${g.rtp.toFixed(1)}%</p>
+    <p class="${s[1]}">${s[0]}</p>
+    <button onclick="add(${g.id})">Enviar</button>
+  </div>`;
+ });
+
+ document.getElementById("games").innerHTML=html;
+}
+
+async function add(id){
+ let bet=parseFloat(prompt("Aposta:"));
+ let win=parseFloat(prompt("Ganho:"));
+ if(!bet||!win) return;
+
+ let res=await fetch(URL+"/rest/v1/games?id=eq."+id,{
+  headers:{apikey:KEY,Authorization:"Bearer "+KEY}
+ });
+
+ let g=(await res.json())[0];
+
+ await fetch(URL+"/rest/v1/games?id=eq."+id,{
+  method:"PATCH",
+  headers:{
+   apikey:KEY,
+   Authorization:"Bearer "+KEY,
+   "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+   totalbet:g.totalbet+bet,
+   totalwin:g.totalwin+win
+  })
+ });
+
+ load();
+}
+
+setInterval(load,5000);
+load();
+</script>
+
+</body>
+</html>
